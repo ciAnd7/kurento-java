@@ -76,6 +76,11 @@ public class KurentoClient {
 				.build();
 	}
 
+    public MediaPipeline createMediaPipeline(String objectRef) {
+        return new AbstractBuilder<MediaPipeline>(MediaPipeline.class, manager)
+                .build(objectRef);
+    }
+    
 	/**
 	 * Creates a new {@link MediaPipeline} in the media server
 	 *

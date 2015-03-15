@@ -58,6 +58,15 @@ public class AbstractBuilder<T> {
 				manager, clazz);
 	}
 
+    @SuppressWarnings("unchecked")
+    public T build(String objectRef) {
+
+        RemoteObject remoteObject =  new RemoteObject(objectRef, clazz.getSimpleName(), manager);
+
+        return (T) RemoteObjectInvocationHandler.newProxy(remoteObject,
+                manager, clazz);
+    }
+
 	@SuppressWarnings("unchecked")
 	public T build(Transaction transaction) {
 
