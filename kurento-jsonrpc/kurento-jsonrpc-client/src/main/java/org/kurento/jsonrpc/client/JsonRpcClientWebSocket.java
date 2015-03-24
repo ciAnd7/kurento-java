@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -51,10 +52,14 @@ import org.kurento.jsonrpc.message.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 public class JsonRpcClientWebSocket extends JsonRpcClient {
+
+	private static final ThreadFactory threadFactory = new ThreadFactoryBuilder()
+			.setNameFormat("JsonRpcClientWebsocket-%d").build();
 
 	@WebSocket(maxTextMessageSize = 64 * 1024)
 	public class SimpleEchoSocket {
@@ -105,7 +110,8 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 
 	private CountDownLatch latch = new CountDownLatch(1);
 
-	private ExecutorService execService = Executors.newFixedThreadPool(10);
+	private ExecutorService execService = Executors.newFixedThreadPool(10,
+			threadFactory);
 
 	private String url;
 	private volatile Session wsSession;
@@ -153,18 +159,19 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 
 	@Override
 	public void close() throws IOException {
+		
+		log.info("{} Closing JsonRpcClientWebsocket", label);
 		if (wsSession != null) {
-			log.debug("{} Closing session by client", label);
-			this.disableHeartbeat();
-			clientClose = true;
 			wsSession.close();
-			this.closeClient();
-		}
+		}		
+		this.disableHeartbeat();
+		clientClose = true;
+		this.closeClient();
 	}
 
 	@Override
 	public void closeWithReconnection() {
-		log.debug("{} Closing session with reconnection", label);
+		log.info("{} Closing session with reconnection", label);
 		this.wsSession.close();
 		this.closeClient();
 	}
@@ -204,7 +211,8 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 
 				SimpleEchoSocket socket = new SimpleEchoSocket();
 				ClientUpgradeRequest request = new ClientUpgradeRequest();
-				wsSession = client.connect(socket, new URI(url), request).get(this.connectionTimeout, TimeUnit.MILLISECONDS);
+				wsSession = client.connect(socket, new URI(url), request).get(
+						this.connectionTimeout, TimeUnit.MILLISECONDS);
 				wsSession.setIdleTimeout(this.idleTimeout);
 
 			} catch (TimeoutException e) {
@@ -217,7 +225,7 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 						+ this.connectionTimeout
 						+ "ms when waiting to connect to Websocket server "
 						+ url);
-				
+
 			} catch (Exception e) {
 				if (connectionListener != null) {
 					connectionListener.connectionFailed();
@@ -265,6 +273,10 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 							log.info(
 									"{} Reconnected to a new session in server {}",
 									label, url);
+						} else {
+							log.warn(
+									"{} Error sending reconnection request to server ",
+									label, url, e);
 						}
 					}
 				}
@@ -461,6 +473,7 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 			try {
 				client.stop();
 				client.destroy();
+				execService.shutdown();
 			} catch (Exception e1) {
 				log.debug("{} Could not properly close websocket client", label);
 			}

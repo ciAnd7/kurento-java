@@ -15,6 +15,7 @@
 package org.kurento.client;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.PreDestroy;
 
@@ -35,13 +36,13 @@ import org.slf4j.LoggerFactory;
  * @since 2.0.0
  */
 public class KurentoClient {
-
+	
 	private static Logger log = LoggerFactory.getLogger(KurentoClient.class);
 
 	protected RomManager manager;
 
 	public static KurentoClient create(String websocketUrl) {
-		log.debug("Connecting to kms in uri " + websocketUrl);
+		log.info("Connecting to kms in {}", websocketUrl);
 		JsonRpcClientWebSocket client = new JsonRpcClientWebSocket(websocketUrl);
 		client.setLabel("KurentoClient");
 		return new KurentoClient(client);
@@ -49,7 +50,7 @@ public class KurentoClient {
 
 	public static KurentoClient create(String websocketUrl,
 			KurentoConnectionListener listener) {
-		log.info("Connecting to KMS in "+websocketUrl);
+		log.info("Connecting to KMS in {}",websocketUrl);
 		JsonRpcClientWebSocket client = new JsonRpcClientWebSocket(websocketUrl,
 				JsonRpcConnectionListenerKurento.create(listener));
 		client.setLabel("KurentoClient");
@@ -105,6 +106,7 @@ public class KurentoClient {
 
 	@PreDestroy
 	public void destroy() {
+		log.info("Closing KurentoClient");
 		manager.destroy();
 	}
 
