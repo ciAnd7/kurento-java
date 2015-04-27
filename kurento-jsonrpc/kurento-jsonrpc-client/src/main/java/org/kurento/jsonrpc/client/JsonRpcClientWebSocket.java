@@ -110,8 +110,7 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 
 	private CountDownLatch latch = new CountDownLatch(1);
 
-	private ExecutorService execService = Executors.newFixedThreadPool(10,
-			threadFactory);
+	private ExecutorService execService = null;
 
 	private String url;
 	private volatile Session wsSession;
@@ -155,6 +154,14 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 				return internalSendRequestWebSocket(request, resultClass);
 			}
 		};
+	}
+	
+	private ExecutorService getExecutorService() {
+        if (execService == null || execService.isShutdown()) {
+            execService = Executors.newFixedThreadPool(10,
+                threadFactory);
+        }
+        return execService;
 	}
 
 	@Override
@@ -298,7 +305,7 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 
 			reconnecting = true;
 
-			execService.execute(new Runnable() {
+			getExecutorService().execute(new Runnable() {
 				@Override
 				public void run() {
 					try {
@@ -345,7 +352,7 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 		// handler of an event. To avoid this problem, we have decided to
 		// process requests from server in a new thread (reused from
 		// ExecutorService).
-		execService.submit(new Runnable() {
+		getExecutorService().submit(new Runnable() {
 			@Override
 			public void run() {
 				try {
@@ -386,7 +393,7 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 			final Continuation<Response<JsonElement>> continuation) {
 
 		// FIXME: Poor man async implementation.
-		execService.submit(new Runnable() {
+		getExecutorService().submit(new Runnable() {
 			@Override
 			public void run() {
 				try {
@@ -473,7 +480,7 @@ public class JsonRpcClientWebSocket extends JsonRpcClient {
 			try {
 				client.stop();
 				client.destroy();
-				execService.shutdown();
+				getExecutorService().shutdown();
 			} catch (Exception e1) {
 				log.debug("{} Could not properly close websocket client", label);
 			}
